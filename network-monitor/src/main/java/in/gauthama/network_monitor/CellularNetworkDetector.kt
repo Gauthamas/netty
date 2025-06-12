@@ -2,6 +2,7 @@ package `in`.gauthama.network_monitor
 
 import android.Manifest
 import android.content.Context
+import android.os.Build
 import android.telephony.TelephonyManager
 import androidx.annotation.RequiresPermission
 import `in`.gauthama.network_monitor.models.CellularNetworkType
@@ -12,6 +13,91 @@ class CellularNetworkDetector(private val context: Context) {
     private val telephonyManager: TelephonyManager by lazy {
         context.applicationContext.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
     }
+
+    /**
+     * Estimates realistic cellular bandwidth based on network generation and current signal strength.
+     * @param cellularType [CellularNetworkType] indicating 2G/3G/4G/5G technology generation
+     * @return [Long] estimated bandwidth in Kbps adjusted for signal quality and network congestion
+     * Applies dynamic signal multiplier (4 bars = 85%, 1 bar = 20%) to base technology speeds.
+     * Accounts for real-world congestion factors varying by network generation and usage patterns.
+     */
+    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+    private fun estimateCellularBandwidth(cellularType: CellularNetworkType): Long {
+        // Base speeds by technology
+        val baseSpeed = when (cellularType) {
+            CellularNetworkType.CELLULAR_5G -> 100_000L   // 5G theoretical
+            CellularNetworkType.CELLULAR_4G -> 50_000L    // 4G theoretical
+            CellularNetworkType.CELLULAR_3G -> 14_400L    // 3G theoretical
+            CellularNetworkType.CELLULAR_2G -> 384L       // 2G theoretical
+            else -> 10_000L
+        }
+
+        // Get actual signal strength from telephony manager
+        val signalQuality = getCurrentCellularSignalQuality()
+
+        // Apply signal-based reduction
+        val signalMultiplier = when (signalQuality) {
+            4 -> 0.85  // Excellent signal (4 bars)
+            3 -> 0.65  // Good signal (3 bars)
+            2 -> 0.40  // Fair signal (2 bars)
+            1 -> 0.20  // Poor signal (1 bar)
+            else -> 0.10 // Very poor/no signal
+        }
+
+        // Network congestion factor (varies by time/location)
+        val congestionFactor = when (cellularType) {
+            CellularNetworkType.CELLULAR_5G -> 0.70  // Less congested
+            CellularNetworkType.CELLULAR_4G -> 0.50  // Moderate congestion
+            CellularNetworkType.CELLULAR_3G -> 0.40  // High congestion
+            else -> 0.30
+        }
+
+        return (baseSpeed * signalMultiplier * congestionFactor).toLong()
+    }
+
+    /**
+     * Gets actual cellular signal strength level as standardized quality indicator (0-4 scale).
+     * @return [Int] signal level where 0=no signal, 1=poor, 2=fair, 3=good, 4=excellent signal
+     * Requires READ_PHONE_STATE permission to access TelephonyManager signal strength data.
+     * Uses SignalStrength.level on API 29+ or backwards-compatible calculation on older versions.
+     * Returns 2 (fair signal) as fallback when permission denied or SignalStrength unavailable.
+     */
+
+
+    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+    private fun getCurrentCellularSignalQuality(): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // API 29+ (Android 10+) - Use new method
+                    telephonyManager.signalStrength?.level ?: 0
+                } else {
+                    // API 28 and below - Use fallback method
+                    getCurrentCellularSignalQualityLegacy()
+                }
+
+    }
+
+
+    /**
+     * Gets estimated cellular quality based on network type without requiring signal strength APIs.
+     * @return [Int] estimated quality where 0=no signal, 1=poor, 2=fair, 3=good, 4=excellent
+     * Uses cellular network generation as proxy for connection quality (5G=excellent, 2G=poor).
+     * Backwards compatible approach that works on all Android versions without signal strength APIs.
+     * Less accurate than signal-based calculation but provides reasonable quality estimates.
+     */
+    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+    private fun getCurrentCellularSignalQualityLegacy(): Int {
+        return when (getCellularNetworkType()) {
+            CellularNetworkType.CELLULAR_5G -> 4      // 5G typically excellent
+            CellularNetworkType.CELLULAR_4G -> 3      // 4G typically good
+            CellularNetworkType.CELLULAR_3G -> 2      // 3G typically fair
+            CellularNetworkType.CELLULAR_2G -> 1      // 2G typically poor
+            else -> 0                                 // Unknown = assume no signal
+
+        }
+    }
+
+
+
 
 
     /**

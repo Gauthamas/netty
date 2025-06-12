@@ -17,8 +17,47 @@ class WiFiNetworkDetector(private val context: Context) {
         val signalStrength: SignalStrength, // Excellent/Good/Fair/Poor
         val linkSpeed: Int,                // Current link speed in Mbps
         val ssid: String,                  // Network name
-        val security: WiFiSecurity         // WPA2, WPA3, Open, etc.
+        val security: WiFiSecurity,         // WPA2, WPA3, Open, etc.
+        val rssi: Int  // ← Add this! Actual RSSI value in dBm
     )
+
+
+    /**
+     * Estimates realistic WiFi bandwidth based on actual signal strength, frequency, and WiFi standard.
+     * @param wifiInfo [WiFiInfo] containing RSSI, frequency band, standard, and link speed details
+     * @return [Long] estimated bandwidth in Kbps accounting for signal quality and real-world conditions
+     * Combines theoretical WiFi capabilities with actual signal strength (-30 to -80 dBm) for dynamic estimation.
+     * Returns conservative estimate between theoretical calculation and system-reported link speed.
+     */
+    private fun estimateWiFiBandwidth(wifiInfo: WiFiInfo): Long {
+        // Get actual signal strength (RSSI)
+        val actualRssi = wifiInfo.rssi // This should come from your WiFiInfo
+
+        // Base speed from WiFi standard and frequency
+        val theoreticalMax = when {
+            wifiInfo.frequency.name.contains("5_GHZ") && wifiInfo.standard.maxSpeed >= 400 -> 400_000L // WiFi 5/6 on 5GHz
+            wifiInfo.frequency.name.contains("5_GHZ") -> 150_000L // Older WiFi on 5GHz
+            else -> 72_000L // 2.4GHz WiFi
+        }
+
+        // Dynamic signal quality multiplier based on actual RSSI
+        val signalQuality = when {
+            actualRssi >= -30 -> 0.95  // Excellent: -30 dBm or better
+            actualRssi >= -50 -> 0.80  // Good: -30 to -50 dBm
+            actualRssi >= -60 -> 0.60  // Fair: -50 to -60 dBm
+            actualRssi >= -70 -> 0.35  // Poor: -60 to -70 dBm
+            actualRssi >= -80 -> 0.15  // Very Poor: -70 to -80 dBm
+            else -> 0.05               // Barely connected: < -80 dBm
+        }
+
+        // Use actual link speed as upper bound (system-reported negotiated speed)
+        val linkSpeedKbps = wifiInfo.linkSpeed * 1000L
+        val theoreticalEstimate = (theoreticalMax * signalQuality * 0.7).toLong() // 70% efficiency
+
+        // Return the more conservative estimate
+        return minOf(linkSpeedKbps, theoreticalEstimate)
+    }
+
 
     /**
      * Gets detailed WiFi network information including standard, frequency, and signal quality.
@@ -39,7 +78,8 @@ class WiFiNetworkDetector(private val context: Context) {
             signalStrength = determineSignalStrength(connectionInfo.rssi),
             linkSpeed = connectionInfo.linkSpeed, // Already in Mbps
             ssid = "Hidden",//connectionInfo.ssid.removeSurrounding("\""), // Remove quotes
-            security = determineSecurityType(connectionInfo)
+            security = determineSecurityType(connectionInfo),
+            rssi = connectionInfo.rssi // ← Add this!
         )
     }
 

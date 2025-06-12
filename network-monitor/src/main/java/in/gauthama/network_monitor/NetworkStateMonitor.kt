@@ -166,7 +166,6 @@ class NetworkStateMonitor(private val context: Context) {
         )
     }
 
-
     /**
      * Observes real-time changes in the network state.
      * Emits a new [NetworkState] object whenever the network connection status,
