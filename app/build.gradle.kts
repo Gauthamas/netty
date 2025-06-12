@@ -41,6 +41,11 @@ android {
 
 dependencies {
 
+    implementation(project(":netty-core"))
+    implementation(project(":network-monitor"))
+    implementation(project(":sync-engine"))
+    implementation(project(":conflict-resolver"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

@@ -1,4 +1,10 @@
-package in.gauthama.network_monitor.models
+package `in`.gauthama.network_monitor.models
 
-class NetworkState {
-}
+
+data class NetworkState(
+    val type: NetworkType,
+    val isMetered: Boolean,
+    val downloadBandwidthKbps: Int?,
+    val uploadBandwidthKbps: Int?
+)
+

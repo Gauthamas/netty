@@ -1,4 +1,4 @@
-package in.gauthama.network_monitor.di
+package `in`.gauthama.network_monitor.di
 
 class NetworkMonitorModule {
 }
