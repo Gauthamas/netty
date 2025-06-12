@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
         Log.e("NetworkStateMonitor", "is metered: ${networkStateMonitor.isMeteredConnection()}")
         Log.e("NetworkStateMonitor", "Current Network Type: ${networkStateMonitor.getCurrentNetworkType()}")
         Log.e("NetworkStateMonitor", "Bandwidth Estimate: ${networkStateMonitor.getBandwidthEstimate()}")
+        Log.e("NetworkStateMonitor", "Wifi Info: ${networkStateMonitor.getWifiInfo()}")
         if(hasCellularPermission())
             Log.e("NetworkStateMonitor", "Cellular Network Type: ${networkStateMonitor.getCellularNetworkType()}")
         //Log.

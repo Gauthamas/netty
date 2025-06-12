@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.util.Log
 
 class WiFiNetworkDetector(private val context: Context) {
 
@@ -31,14 +32,14 @@ class WiFiNetworkDetector(private val context: Context) {
         val connectionInfo = wifiManager.connectionInfo ?: return null
 
         // Check if actually connected (SSID will be <unknown ssid> if not)
-        if (connectionInfo.ssid == WifiManager.UNKNOWN_SSID) return null
+        //if (connectionInfo.ssid == WifiManager.UNKNOWN_SSID) return null
 
         return WiFiInfo(
             standard = determineWiFiStandard(connectionInfo),
             frequency = determineFrequency(connectionInfo.frequency),
             signalStrength = determineSignalStrength(connectionInfo.rssi),
             linkSpeed = connectionInfo.linkSpeed, // Already in Mbps
-            ssid = connectionInfo.ssid.removeSurrounding("\""), // Remove quotes
+            ssid = "Hidden",//connectionInfo.ssid.removeSurrounding("\""), // Remove quotes
             security = determineSecurityType(connectionInfo)
         )
     }

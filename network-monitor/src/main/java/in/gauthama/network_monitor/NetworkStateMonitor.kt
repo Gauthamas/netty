@@ -11,9 +11,8 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.net.wifi.WifiManager
-import android.telephony.TelephonyManager
 import androidx.annotation.RequiresPermission
+import `in`.gauthama.network_monitor.WiFiNetworkDetector.WiFiInfo
 import `in`.gauthama.network_monitor.models.CellularNetworkType
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
@@ -74,7 +73,11 @@ class NetworkStateMonitor(private val context: Context) {
 
     @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
     fun getCellularNetworkType(): CellularNetworkType {
-        return cellularNetworkDetector.getCellularNetworkType();
+        return cellularNetworkDetector.getCellularNetworkType()
+    }
+
+    fun getWifiInfo(): WiFiInfo?{
+        return wifiDetector.getWiFiInfo()
     }
 
 
