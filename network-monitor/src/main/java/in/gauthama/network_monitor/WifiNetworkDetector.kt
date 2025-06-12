@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Build
-import android.util.Log
 
 class WiFiNetworkDetector(private val context: Context) {
 

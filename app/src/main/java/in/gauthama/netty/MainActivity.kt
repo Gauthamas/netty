@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import `in`.gauthama.netty.ui.theme.NettyTheme
 import `in`.gauthama.network_monitor.NetworkStateMonitor
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
@@ -46,7 +48,18 @@ class MainActivity : ComponentActivity() {
         Log.e("NetworkStateMonitor", "Wifi Info: ${networkStateMonitor.getWifiInfo()}")
         if(hasCellularPermission())
             Log.e("NetworkStateMonitor", "Cellular Network Type: ${networkStateMonitor.getCellularNetworkType()}")
-        //Log.
+
+
+        lifecycleScope.launch {
+            networkStateMonitor.observeNetworkChanges().collect { networkState ->
+                Log.e("NetworkStateMonitor", "=== NETWORK CHANGED ===")
+                Log.e("NetworkStateMonitor", "Type: ${networkState.type}")
+                Log.e("NetworkStateMonitor", "Is Metered: ${networkState.isMetered}")
+                Log.e("NetworkStateMonitor", "Download Bandwidth: ${networkState.downloadBandwidthKbps} Kbps")
+                Log.e("NetworkStateMonitor", "Upload Bandwidth: ${networkState.uploadBandwidthKbps} Kbps")
+                Log.e("NetworkStateMonitor", "=======================")
+            }
+        }
     // e("NetworkStateMonitor", "Current Network State: ${networkStateMonitor.getCurrentNetworkState()}");
     }
     fun requestCellularPermissionIfNeeded(activity: Activity): Boolean {

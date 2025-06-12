@@ -70,12 +70,26 @@ class NetworkStateMonitor(private val context: Context) {
     }
 
 
-
+    /**
+     * Retrieves the current cellular network generation (2G/3G/4G/5G) from the device's telephony service.
+     * @return [CellularNetworkType] indicating cellular generation or UNKNOWN if unavailable/no permission
+     * @throws SecurityException if READ_PHONE_STATE permission not granted (handled internally)
+     * Delegates to internal CellularNetworkDetector for detailed network type classification.
+     * Note: Returns UNKNOWN when not connected to cellular or permission denied.
+     */
     @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
     fun getCellularNetworkType(): CellularNetworkType {
         return cellularNetworkDetector.getCellularNetworkType()
     }
 
+
+    /**
+     * Retrieves comprehensive WiFi network information including standard, frequency, and signal quality.
+     * @return [WiFiInfo] with detailed network data, or null if WiFi unavailable/disconnected
+     * Requires ACCESS_FINE_LOCATION permission on Android 6+ to access SSID information.
+     * Delegates to internal WiFiNetworkDetector for complete WiFi analysis and capabilities assessment.
+     * Returns null when WiFi disabled, not connected, or location permission missing.
+     */
     fun getWifiInfo(): WiFiInfo?{
         return wifiDetector.getWiFiInfo()
     }
@@ -178,13 +192,13 @@ class NetworkStateMonitor(private val context: Context) {
             // Called when a network becomes available (connected).
             override fun onAvailable(network: Network) {
                 super.onAvailable(network)
-                //trySend(getCurrentNetworkState())
+                trySend(getCurrentNetworkState())
             }
 
             // Called when a network is no longer available (disconnected).
             override fun onLost(network: Network) {
                 super.onLost(network)
-                //trySend(getCurrentNetworkState())
+                trySend(getCurrentNetworkState())
             }
 
             // Called when the capabilities of a network have changed.
@@ -194,7 +208,7 @@ class NetworkStateMonitor(private val context: Context) {
                 networkCapabilities: NetworkCapabilities
             ) {
                 super.onCapabilitiesChanged(network, networkCapabilities)
-                //trySend(getCurrentNetworkState())
+                trySend(getCurrentNetworkState())
             }
 
             // Called when the LinkProperties of a network have changed.
@@ -204,7 +218,7 @@ class NetworkStateMonitor(private val context: Context) {
                 linkProperties: android.net.LinkProperties
             ) {
                 super.onLinkPropertiesChanged(network, linkProperties)
-                //trySend(getCurrentNetworkState())
+                trySend(getCurrentNetworkState())
             }
         }
 
