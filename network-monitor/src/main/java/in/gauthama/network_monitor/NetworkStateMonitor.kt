@@ -33,8 +33,10 @@ class NetworkStateMonitor(private val context: Context) {
     private val connectivityManager: ConnectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-    val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+    private val wifiDetector = WiFiNetworkDetector(context)
+    private val cellularNetworkDetector = CellularNetworkDetector(context)
+
 
     /**
      * Checks for the `ACCESS_NETWORK_STATE` permission.
@@ -67,6 +69,14 @@ class NetworkStateMonitor(private val context: Context) {
             else -> NetworkType.NONE
         }
     }
+
+
+
+    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+    fun getCellularNetworkType(): CellularNetworkType {
+        return cellularNetworkDetector.getCellularNetworkType();
+    }
+
 
     /**
      * Retrieves the estimated download bandwidth of the current active network.
@@ -104,8 +114,6 @@ class NetworkStateMonitor(private val context: Context) {
         return connectivityManager.isActiveNetworkMetered
     }
 
-
-
     /**
      * Gets the current comprehensive network state including type, metered status, and bandwidth.
      * This is a helper function used internally and by the flow.
@@ -139,69 +147,6 @@ class NetworkStateMonitor(private val context: Context) {
             downloadBandwidthKbps = downloadBandwidth,
             uploadBandwidthKbps = uploadBandwidth
         )
-    }
-
-    /**
-     * Gets the current cellular network type (2G/3G/4G/5G) using TelephonyManager.
-     * @return [CellularNetworkType] enum indicating network generation, or UNKNOWN if unavailable
-     * @throws SecurityException if READ_PHONE_STATE permission not granted (handled internally)
-     * Requires READ_PHONE_STATE permission to access telephony information from the system.
-     * Use this for adaptive behavior like adjusting video quality or data usage based on network capability.
-     * Note: 5G detection only available on Android API 29+, older devices return UNKNOWN for 5G networks.
-     */
-
-    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
-    fun getCellularNetworkType(): CellularNetworkType {
-        return try {
-            val networkType = telephonyManager.networkType
-            mapNetworkType(networkType)
-        } catch (e: SecurityException) {
-            // No READ_PHONE_STATE permission
-            CellularNetworkType.UNKNOWN
-        }
-    }
-
-    /**
-     * Maps TelephonyManager's raw network type constants to simplified cellular generations.
-     * Categorizes 15+ different cellular standards into 4 user-friendly types (2G/3G/4G/5G).
-     * 2G: GPRS/EDGE (slow), 3G: UMTS/HSDPA (moderate), 4G: LTE (fast), 5G: NR (very fast).
-     * @param networkType [Int] constant from TelephonyManager.getNetworkType() (e.g., NETWORK_TYPE_LTE)
-     * @return [CellularNetworkType] enum representing 2G/3G/4G/5G or UNKNOWN for unrecognized types
-     * Categorizes 15+ cellular standards into 4 actionable categories for app decision-making.
-     * Internal helper that translates technical standards (HSDPA, LTE, NR) into user-friendly types.
-     */
-
-    private fun mapNetworkType(networkType: Int): CellularNetworkType {
-        return when (networkType) {
-            // 2G Networks
-            TelephonyManager.NETWORK_TYPE_GPRS,
-            TelephonyManager.NETWORK_TYPE_EDGE,
-            TelephonyManager.NETWORK_TYPE_CDMA,
-            TelephonyManager.NETWORK_TYPE_1xRTT,
-            TelephonyManager.NETWORK_TYPE_IDEN -> CellularNetworkType.CELLULAR_2G
-
-            // 3G Networks
-            TelephonyManager.NETWORK_TYPE_UMTS,
-            TelephonyManager.NETWORK_TYPE_EVDO_0,
-            TelephonyManager.NETWORK_TYPE_EVDO_A,
-            TelephonyManager.NETWORK_TYPE_HSDPA,
-            TelephonyManager.NETWORK_TYPE_HSUPA,
-            TelephonyManager.NETWORK_TYPE_HSPA,
-            TelephonyManager.NETWORK_TYPE_EVDO_B,
-            TelephonyManager.NETWORK_TYPE_EHRPD,
-            TelephonyManager.NETWORK_TYPE_HSPAP -> CellularNetworkType.CELLULAR_3G
-
-            // 4G Networks
-            TelephonyManager.NETWORK_TYPE_LTE -> CellularNetworkType.CELLULAR_4G
-
-            // 5G Networks (API 29+)
-            TelephonyManager.NETWORK_TYPE_NR -> CellularNetworkType.CELLULAR_5G
-
-            // Unknown/Unavailable
-            TelephonyManager.NETWORK_TYPE_UNKNOWN -> CellularNetworkType.UNKNOWN
-
-            else -> CellularNetworkType.UNKNOWN
-        }
     }
 
 

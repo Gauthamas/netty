@@ -39,12 +39,12 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val networkStateMonitor = NetworkStateMonitor(this);
-        Log.e("NetworkStateMonitor", "is metered: ${networkStateMonitor.isMeteredConnection()}");
-        Log.e("NetworkStateMonitor", "Current Network Type: ${networkStateMonitor.getCurrentNetworkType()}");
-        Log.e("NetworkStateMonitor", "Bandwidth Estimate: ${networkStateMonitor.getBandwidthEstimate()}");
+        val networkStateMonitor = NetworkStateMonitor(this)
+        Log.e("NetworkStateMonitor", "is metered: ${networkStateMonitor.isMeteredConnection()}")
+        Log.e("NetworkStateMonitor", "Current Network Type: ${networkStateMonitor.getCurrentNetworkType()}")
+        Log.e("NetworkStateMonitor", "Bandwidth Estimate: ${networkStateMonitor.getBandwidthEstimate()}")
         if(hasCellularPermission())
-            Log.e("NetworkStateMonitor", "Cellular Network Type: ${networkStateMonitor.getCellularNetworkType()}");
+            Log.e("NetworkStateMonitor", "Cellular Network Type: ${networkStateMonitor.getCellularNetworkType()}")
         //Log.
     // e("NetworkStateMonitor", "Current Network State: ${networkStateMonitor.getCurrentNetworkState()}");
     }
