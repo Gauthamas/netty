@@ -14,6 +14,23 @@ class CellularNetworkDetector(private val context: Context) {
         context.applicationContext.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
     }
 
+
+    /**
+     * Estimates realistic cellular bandwidth based on network generation and current signal strength.
+     * @return [Long] estimated bandwidth in Kbps adjusted for signal quality and network congestion
+     * Applies dynamic signal multiplier based on actual cellular signal strength measurements.
+     * Returns conservative fallback estimate when READ_PHONE_STATE permission not available.
+     * Accounts for real-world congestion factors varying by network generation.
+     */
+    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+    fun estimateBandwidth(): Long {
+        val cellularType = getCellularNetworkType()
+        return when (cellularType) {
+            CellularNetworkType.UNKNOWN -> 1000L //conservative fallback without permission
+            else -> estimateCellularBandwidth(cellularType)
+        }
+    }
+
     /**
      * Estimates realistic cellular bandwidth based on network generation and current signal strength.
      * @param cellularType [CellularNetworkType] indicating 2G/3G/4G/5G technology generation
@@ -68,7 +85,7 @@ class CellularNetworkDetector(private val context: Context) {
     private fun getCurrentCellularSignalQuality(): Int {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     // API 29+ (Android 10+) - Use new method
-                    telephonyManager.signalStrength?.level ?: 0
+                    telephonyManager.signalStrength?.level ?: 2
                 } else {
                     // API 28 and below - Use fallback method
                     getCurrentCellularSignalQualityLegacy()

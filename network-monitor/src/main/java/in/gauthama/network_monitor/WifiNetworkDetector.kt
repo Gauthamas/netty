@@ -5,6 +5,12 @@ import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Build
 
+
+/**
+ * Estimates WiFi bandwidth using industry-typical efficiency factors.
+ * Note: Coefficients are approximations and may not reflect actual conditions.
+ * Real-world performance varies significantly based on environment and usage.
+ */
 class WiFiNetworkDetector(private val context: Context) {
 
     private val wifiManager: WifiManager by lazy {
@@ -21,6 +27,17 @@ class WiFiNetworkDetector(private val context: Context) {
         val rssi: Int  // ← Add this! Actual RSSI value in dBm
     )
 
+    /**
+     * Estimates realistic WiFi bandwidth based on actual signal strength, frequency, and standard.
+     * @return [Long] estimated bandwidth in Kbps accounting for signal quality and real-world conditions
+     * Combines theoretical WiFi capabilities with actual RSSI measurements for dynamic estimation.
+     * Returns null if WiFi not connected or detailed information unavailable.
+     * Uses conservative estimate between theoretical calculation and system-reported link speed.
+     */
+    fun estimateBandwidth(): Long? {
+        val wifiInfo = getWiFiInfo() ?: return null
+        return estimateWiFiBandwidth(wifiInfo)
+    }
 
     /**
      * Estimates realistic WiFi bandwidth based on actual signal strength, frequency, and WiFi standard.

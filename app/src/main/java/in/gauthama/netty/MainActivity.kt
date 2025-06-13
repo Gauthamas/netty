@@ -50,6 +50,8 @@ class MainActivity : ComponentActivity() {
             Log.e("NetworkStateMonitor", "Cellular Network Type: ${networkStateMonitor.getCellularNetworkType()}")
 
 
+        Log.e("NetworkStateMonitor", "Enhanced Bandwidth Estimate: ${networkStateMonitor.getEnhancedBandwidthEstimate()}")
+
         lifecycleScope.launch {
             networkStateMonitor.observeNetworkChanges().collect { networkState ->
                 Log.e("NetworkStateMonitor", "=== NETWORK CHANGED ===")

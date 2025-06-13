@@ -94,6 +94,26 @@ class NetworkStateMonitor(private val context: Context) {
         return wifiDetector.getWiFiInfo()
     }
 
+    /**
+     * Gets enhanced bandwidth estimate using cellular/WiFi intelligence instead of unreliable system values.
+     * @return [Long] realistic bandwidth estimate in Kbps based on network type and signal quality
+     * Delegates to specialized detectors for accurate network-specific bandwidth calculations.
+     * Provides fallback estimates when detailed network information unavailable due to permissions.
+     * Returns 0 for offline connections or when no network detection possible.
+     */
+    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+    fun getEnhancedBandwidthEstimate(): Long {
+        return when (getCurrentNetworkType()) {
+            NetworkType.WIFI -> {
+                wifiDetector.estimateBandwidth() ?: getBandwidthEstimate()
+            }
+            NetworkType.MOBILE -> {
+                cellularNetworkDetector.estimateBandwidth()
+            }
+            else -> 0L
+        }
+    }
+
 
     /**
      * Retrieves the estimated download bandwidth of the current active network.
