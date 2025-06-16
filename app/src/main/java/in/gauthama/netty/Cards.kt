@@ -25,6 +25,7 @@ import `in`.gauthama.network_monitor.models.DataCostImpact
 import `in`.gauthama.network_monitor.models.ImageQuality
 import `in`.gauthama.network_monitor.models.NetworkSuggestions
 import `in`.gauthama.network_monitor.models.NetworkState
+import `in`.gauthama.network_monitor.models.NetworkType
 import `in`.gauthama.network_monitor.models.VideoQuality
 
 @Composable
@@ -47,7 +48,7 @@ fun HeaderCard() {
 }
 
 @Composable
-fun NetworkInfoCard(networkStateMonitor: NetworkStateMonitor, networkState: NetworkState?,  hasInternet: Boolean?) {
+fun NetworkInfoCard(networkStateMonitor: NetworkStateMonitor, networkState: NetworkState?, hasInternet: Boolean?) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -62,12 +63,13 @@ fun NetworkInfoCard(networkStateMonitor: NetworkStateMonitor, networkState: Netw
                 // Internet connectivity status
                 val internetStatus = when (hasInternet) {
                     true -> "✅ Internet Available"
-                    false -> "❌ No Internet (Connected to network only)"
+                    false -> if(state.type != NetworkType.NONE)"❌ No Internet (Connected to network only)"
+                             else "❌ No Internet"
                     null -> "🔍 Checking..."
                 }
                 InfoRow("Internet Status", internetStatus)
 
-                if (hasInternet == false) {
+                if (hasInternet == false && state.type != NetworkType.NONE) {
                     Text(
                         "⚠️ Network connected but no internet access detected",
                         style = MaterialTheme.typography.bodySmall,

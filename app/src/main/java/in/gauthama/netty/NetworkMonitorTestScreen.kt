@@ -34,7 +34,7 @@ fun NetworkMonitorTestScreen(
             networkState = state
             try {
                 // Check actual internet connectivity
-                hasInternet = networkStateMonitor.hasActualInternetConnectivity()
+                hasInternet = networkStateMonitor.hasInternetConnectivity()
 
                 // Get recommendations with internet validation
                 recommendations = networkStateMonitor.getNetworkSuggestionsWithInternetCheck()

@@ -7,7 +7,7 @@ import android.telephony.TelephonyManager
 import androidx.annotation.RequiresPermission
 import `in`.gauthama.network_monitor.models.CellularNetworkType
 
-class CellularNetworkDetector(private val context: Context) {
+class CellularNetworkEstimator(private val context: Context) {
 
 
     private val telephonyManager: TelephonyManager by lazy {

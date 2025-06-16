@@ -1,6 +1,5 @@
 package `in`.gauthama.netty
 
-import android.Manifest
 import android.Manifest.permission.READ_PHONE_STATE
 import android.app.Activity
 import android.content.pm.PackageManager
@@ -13,25 +12,23 @@ import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import `in`.gauthama.netty.ui.theme.NettyTheme
 import `in`.gauthama.network_monitor.NetworkStateMonitor
+import `in`.gauthama.network_monitor.NetworkStateMonitorFactory
 import `in`.gauthama.network_monitor.models.NetworkSuggestions
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     lateinit var networkStateMonitor: NetworkStateMonitor
-    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+    @RequiresPermission(READ_PHONE_STATE)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        networkStateMonitor = NetworkStateMonitor(this)
+        networkStateMonitor = NetworkStateMonitorFactory.create(this)
         setContent {
             NettyTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -43,30 +40,29 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        Log.e("NetworkStateMonitor", "is metered: ${networkStateMonitor.isMeteredConnection()}")
-        Log.e("NetworkStateMonitor", "Current Network Type: ${networkStateMonitor.getCurrentNetworkType()}")
-        Log.e("NetworkStateMonitor", "Bandwidth Estimate: ${networkStateMonitor.getBandwidthEstimate()}")
-        Log.e("NetworkStateMonitor", "Wifi Info: ${networkStateMonitor.getWifiInfo()}")
+        Log.e("NetworkStateMonitorImpl", "is metered: ${networkStateMonitor.isMeteredConnection()}")
+        Log.e("NetworkStateMonitorImpl", "Current Network Type: ${networkStateMonitor.getCurrentNetworkType()}")
+        Log.e("NetworkStateMonitorImpl", "Bandwidth Estimate: ${networkStateMonitor.getBandwidthEstimate()}")
+        Log.e("NetworkStateMonitorImpl", "Wifi Info: ${networkStateMonitor.getWifiInfo()}")
         if(hasCellularPermission())
-            Log.e("NetworkStateMonitor", "Cellular Network Type: ${networkStateMonitor.getCellularNetworkType()}")
+            Log.e("NetworkStateMonitorImpl", "Cellular Network Type: ${networkStateMonitor.getCellularNetworkType()}")
 
 
-        Log.e("NetworkStateMonitor", "Enhanced Bandwidth Estimate: ${networkStateMonitor.getEnhancedBandwidthEstimate()}")
+        Log.e("NetworkStateMonitorImpl", "Enhanced Bandwidth Estimate: ${networkStateMonitor.getEnhancedBandwidthEstimate()}")
 
         val rec = networkStateMonitor.getNetworkSuggestions()
         testHDVideoRecommendation(rec, networkStateMonitor)
 
         lifecycleScope.launch {
             networkStateMonitor.observeNetworkChanges().collect { networkState ->
-                Log.e("NetworkStateMonitor", "=== NETWORK CHANGED ===")
-                Log.e("NetworkStateMonitor", "Type: ${networkState.type}")
-                Log.e("NetworkStateMonitor", "Is Metered: ${networkState.isMetered}")
-                Log.e("NetworkStateMonitor", "Download Bandwidth: ${networkState.downloadBandwidthKbps} Kbps")
-                Log.e("NetworkStateMonitor", "Upload Bandwidth: ${networkState.uploadBandwidthKbps} Kbps")
-                Log.e("NetworkStateMonitor", "=======================")
+                Log.e("NetworkStateMonitorImpl", "=== NETWORK CHANGED ===")
+                Log.e("NetworkStateMonitorImpl", "Type: ${networkState.type}")
+                Log.e("NetworkStateMonitorImpl", "Is Metered: ${networkState.isMetered}")
+                Log.e("NetworkStateMonitorImpl", "Download Bandwidth: ${networkState.downloadBandwidthKbps} Kbps")
+                Log.e("NetworkStateMonitorImpl", "Upload Bandwidth: ${networkState.uploadBandwidthKbps} Kbps")
+                Log.e("NetworkStateMonitorImpl", "=======================")
             }
         }
-    // e("NetworkStateMonitor", "Current Network State: ${networkStateMonitor.getCurrentNetworkState()}");
     }
 
     fun requestCellularPermissionIfNeeded(activity: Activity): Boolean {
@@ -100,7 +96,7 @@ class MainActivity : ComponentActivity() {
 
     }
 
-    @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+    @RequiresPermission(READ_PHONE_STATE)
     private fun testHDVideoRecommendation(rec: NetworkSuggestions, networkStateMonitor: NetworkStateMonitor) {
         Log.e("Networkstatemonitor TEST_HD_VIDEO", "📺 === HD VIDEO STREAMING TEST ===")
         Log.e("Networkstatemonitor TEST_HD_VIDEO", "Recommendation: ${if (rec.canStreamHDVideo) "✅ CAN STREAM HD" else "❌ CANNOT STREAM HD"}")
@@ -118,24 +114,5 @@ class MainActivity : ComponentActivity() {
         Log.e("Networkstatemonitor TEST_HD_VIDEO", "Actual Result: ${rec.canStreamHDVideo}")
         Log.e("Networkstatemonitor TEST_HD_VIDEO", "Test Status: ${if (expectedResult == rec.canStreamHDVideo) "✅ PASSED" else "❌ FAILED"}")
         Log.e("Networkstatemonitor TEST_HD_VIDEO", "===============================")
-    }
-
-
-
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    NettyTheme {
-        Greeting("Android")
     }
 }
