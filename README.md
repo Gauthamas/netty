@@ -37,7 +37,7 @@ lifecycleScope.launch {
 ## Demo App
 
 <div align="center">
-  <img src="docs/Screemshot1.jpeg" width="300">
+  <img src="images/Screemshot1.jpeg" width="300">
   <p><em>Network monitoring demo app</em></p>
 </div>
 
