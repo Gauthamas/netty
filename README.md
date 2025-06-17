@@ -1,12 +1,12 @@
 ## Purpose
-Provide a single class for all your network monitoring needs
-Combines apis from connectivity manager, telephony manager and wifi manager
-Checks for internet connectivity
-Adds a network intelligence layer to provide actionable suggestions for various operations such as streaming video, uploading photos etc.
+1. Provide a single class for all your network monitoring needs
+2. Combines apis from connectivity manager, telephony manager and wifi manager
+3. Checks for internet connectivity
+4. Adds a network intelligence layer to provide actionable suggestions for various operations such as streaming video, uploading photos etc.
 
 
-## Code Sample
-
+## Code Sample Usage
+```kotlin
 // In your Activity/Fragment
 lifecycleScope.launch {
     networkStateMonitor.observeNetworkChanges().collect { networkState ->
@@ -27,15 +27,19 @@ lifecycleScope.launch {
         Log.e("NetworkStateMonitor", "  Can Make Video Calls: ${networkSuggestions.canMakeVideoCalls}")
         Log.e("NetworkStateMonitor", "  Should Defer Large Uploads: ${networkSuggestions.shouldDeferLargeUploads}")
         Log.e("NetworkStateMonitor", "  Should Defer Large Downloads: ${networkSuggestions.shouldDeferLargeDownloads}")
-        Log.e("NetworkStateMonitor", "  Suggested Image Quality: ${networkSuggestions.suggestedImageQuality}")
-        Log.e("NetworkStateMonitor", "  Suggested Video Quality: ${networkSuggestions.suggestedVideoQuality}")
+        Log.e("NetworkStateMonitor", "  Recommended Image Quality: ${networkSuggestions.recommendedImageQuality}")
+        Log.e("NetworkStateMonitor", "  Recommended Video Quality: ${networkSuggestions.recommendedVideoQuality}")
         Log.e("NetworkStateMonitor", "  Battery Impact: ${networkSuggestions.batteryImpact}")
         Log.e("NetworkStateMonitor", "  Data Cost Impact: ${networkSuggestions.dataCostImpact}")
     }
 }
-
+```
 ## Demo App
 
+<div align="center">
+  <img src="docs/Screemshot1.jpeg" width="300">
+  <p><em>Network monitoring demo app</em></p>
+</div>
 
 
 
