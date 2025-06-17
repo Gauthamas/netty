@@ -27,8 +27,8 @@ lifecycleScope.launch {
         Log.e("NetworkStateMonitor", "  Can Make Video Calls: ${networkSuggestions.canMakeVideoCalls}")
         Log.e("NetworkStateMonitor", "  Should Defer Large Uploads: ${networkSuggestions.shouldDeferLargeUploads}")
         Log.e("NetworkStateMonitor", "  Should Defer Large Downloads: ${networkSuggestions.shouldDeferLargeDownloads}")
-        Log.e("NetworkStateMonitor", "  Recommended Image Quality: ${networkSuggestions.recommendedImageQuality}")
-        Log.e("NetworkStateMonitor", "  Recommended Video Quality: ${networkSuggestions.recommendedVideoQuality}")
+        Log.e("NetworkStateMonitor", "  Recommended Image Quality: ${networkSuggestions.suggestedImageQuality}")
+        Log.e("NetworkStateMonitor", "  Recommended Video Quality: ${networkSuggestions.suggestedVideoQuality}")
         Log.e("NetworkStateMonitor", "  Battery Impact: ${networkSuggestions.batteryImpact}")
         Log.e("NetworkStateMonitor", "  Data Cost Impact: ${networkSuggestions.dataCostImpact}")
     }
