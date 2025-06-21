@@ -7,7 +7,10 @@
 
 ## Code Sample Usage
 ```kotlin
+
 // In your Activity/Fragment
+val networkStateMonitor = NetworkStateMonitorFactory.create(this)
+
 lifecycleScope.launch {
     networkStateMonitor.observeNetworkChanges().collect { networkState ->
         Log.e("NetworkStateMonitor", "=== NETWORK CHANGED ===")
