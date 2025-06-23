@@ -8,9 +8,20 @@ import `in`.gauthama.network_monitor.models.ImageQuality
 import `in`.gauthama.network_monitor.models.NetworkQuality
 import `in`.gauthama.network_monitor.models.NetworkSuggestions
 import `in`.gauthama.network_monitor.models.NetworkType
+import `in`.gauthama.network_monitor.models.SuggestionsConfig
+import `in`.gauthama.network_monitor.models.UserMode
 import `in`.gauthama.network_monitor.models.VideoQuality
 
-class SuggestionsEngine {
+class SuggestionsEngine(
+    private val config: SuggestionsConfig = SuggestionsConfig()
+) {
+
+    /**
+     * Whether to treat metered connections as unrestricted
+     */
+    private val treatMeteredAsUnlimited: Boolean
+        get() = config.ignoreMeteredRestrictions || config.userMode == UserMode.UNRESTRICTED
+
     /**
      * Provides intelligent suggestions for app behavior based on current network conditions.
      * @return [NetworkSuggestions] with actionable guidance for optimal user experience
@@ -19,57 +30,87 @@ class SuggestionsEngine {
      * Optimizes for user experience while respecting data costs and battery life.
      */
     @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
-    fun getNetworkSuggestions(enhancedBandwidth: Long, isMetered: Boolean,
-                              networkQuality: NetworkQuality, networkType: NetworkType): NetworkSuggestions {
+    fun getNetworkSuggestions(
+        enhancedBandwidth: Long,
+        isMetered: Boolean,
+        networkQuality: NetworkQuality,
+        networkType: NetworkType
+    ): NetworkSuggestions {
+        // Adjust metered status based on configuration
+        val effectiveMetered = isMetered && !treatMeteredAsUnlimited
+
         return NetworkSuggestions(
-            canStreamHDVideo = canHandleHDVideo(enhancedBandwidth, networkQuality, isMetered),
+            canStreamHDVideo = canHandleHDVideo(enhancedBandwidth, networkQuality, effectiveMetered),
             canMakeVideoCalls = canHandleVideoCalls(enhancedBandwidth, networkQuality),
             shouldDeferLargeDownloads = shouldDeferLargeOperations(
-                isMetered,
+                effectiveMetered,
                 networkQuality,
                 enhancedBandwidth
             ),
             shouldDeferLargeUploads = shouldDeferLargeOperations(
-                isMetered,
+                effectiveMetered,
                 networkQuality,
                 enhancedBandwidth,
                 isUpload = true
             ),
             suggestedImageQuality = getSuggestedImageQuality(
                 enhancedBandwidth,
-                isMetered,
+                effectiveMetered,
                 networkQuality
             ),
             suggestedVideoQuality = getSuggestedVideoQuality(
                 enhancedBandwidth,
-                isMetered,
+                effectiveMetered,
                 networkQuality
             ),
             batteryImpact = assessBatteryImpact(networkType, networkQuality),
-            dataCostImpact = assessDataCostImpact(isMetered, networkType),
+            dataCostImpact = assessDataCostImpact(effectiveMetered, networkType),
             maxSuggestedFileSize = getMaxSuggestedFileSize(
-                isMetered,
+                effectiveMetered,
                 enhancedBandwidth,
                 networkQuality
             ),
-            batchOperations = shouldBatchOperations(isMetered, networkQuality)
+            batchOperations = shouldBatchOperations(effectiveMetered, networkQuality)
         )
     }
-
 
     private fun canHandleHDVideo(
         bandwidth: Long,
         quality: NetworkQuality,
         isMetered: Boolean
     ): Boolean {
-        return bandwidth >= 5_000L && // 5 Mbps minimum for HD
-                quality != NetworkQuality.POOR &&
-                !isMetered // Ni HD video on cellular
+        return when (config.userMode) {
+            UserMode.UNRESTRICTED -> {
+                // Only care about bandwidth, ignore metered status
+                bandwidth >= 5_000L && quality != NetworkQuality.POOR
+            }
+            UserMode.BALANCED -> {
+                // Current behavior - no HD on metered unless bandwidth is great
+                bandwidth >= 5_000L &&
+                        quality != NetworkQuality.POOR &&
+                        (!isMetered || bandwidth >= 10_000L)
+            }
+            UserMode.CONSERVATIVE -> {
+                // HD only on unmetered with excellent conditions
+                bandwidth >= 8_000L &&
+                        quality == NetworkQuality.EXCELLENT &&
+                        !isMetered
+            }
+        }
     }
 
     private fun canHandleVideoCalls(bandwidth: Long, quality: NetworkQuality): Boolean {
-        return bandwidth >= 1_000L && // 1 Mbps minimum for video calls
-                quality != NetworkQuality.POOR
+        return when (config.userMode) {
+            UserMode.UNRESTRICTED -> {
+                bandwidth >= 500L // Lower threshold
+            }
+            UserMode.BALANCED -> {
+                bandwidth >= 1_000L && quality != NetworkQuality.POOR
+            }
+            UserMode.CONSERVATIVE -> {
+                bandwidth >= 2_000L && quality >= NetworkQuality.GOOD
+            }
+        }
     }
 
     private fun shouldDeferLargeOperations(
@@ -78,17 +119,28 @@ class SuggestionsEngine {
         bandwidth: Long,
         isUpload: Boolean = false
     ): Boolean {
-        return when {
-            // Always defer large operations on poor networks
-            quality == NetworkQuality.POOR -> true
-
-            // Defer on metered connections with low bandwidth
-            isMetered && bandwidth < 10_000L -> true
-
-            // Be more conservative with uploads (they're often slower)
-            isUpload && isMetered && bandwidth < 5_000L -> true
-
-            else -> false
+        return when (config.userMode) {
+            UserMode.UNRESTRICTED -> {
+                // Only defer on very poor networks
+                quality == NetworkQuality.POOR && bandwidth < 1_000L
+            }
+            UserMode.BALANCED -> {
+                when {
+                    quality == NetworkQuality.POOR -> true
+                    isMetered && bandwidth < 10_000L -> true
+                    isUpload && isMetered && bandwidth < 5_000L -> true
+                    else -> false
+                }
+            }
+            UserMode.CONSERVATIVE -> {
+                // Defer unless on good unmetered connection
+                when {
+                    quality != NetworkQuality.EXCELLENT -> true
+                    isMetered -> true
+                    bandwidth < 20_000L -> true
+                    else -> false
+                }
+            }
         }
     }
 
@@ -97,21 +149,29 @@ class SuggestionsEngine {
         isMetered: Boolean,
         quality: NetworkQuality
     ): ImageQuality {
-        return when {
-            // Poor network = low quality always
-            quality == NetworkQuality.POOR -> ImageQuality.LOW
-
-            // Excellent unmetered = high quality
-            !isMetered && quality == NetworkQuality.EXCELLENT -> ImageQuality.HIGH
-
-            // Good bandwidth unmetered = high quality
-            !isMetered && bandwidth >= 10_000L -> ImageQuality.HIGH
-
-            // Decent bandwidth = medium quality
-            bandwidth >= 2_000L -> ImageQuality.MEDIUM
-
-            // Default to low quality
-            else -> ImageQuality.LOW
+        return when (config.userMode) {
+            UserMode.UNRESTRICTED -> {
+                when {
+                    quality == NetworkQuality.POOR -> ImageQuality.MEDIUM
+                    bandwidth >= 5_000L -> ImageQuality.HIGH
+                    else -> ImageQuality.MEDIUM
+                }
+            }
+            UserMode.BALANCED -> {
+                when {
+                    quality == NetworkQuality.POOR -> ImageQuality.LOW
+                    !isMetered && quality == NetworkQuality.EXCELLENT -> ImageQuality.HIGH
+                    !isMetered && bandwidth >= 10_000L -> ImageQuality.HIGH
+                    bandwidth >= 2_000L -> ImageQuality.MEDIUM
+                    else -> ImageQuality.LOW
+                }
+            }
+            UserMode.CONSERVATIVE -> {
+                when {
+                    !isMetered && quality == NetworkQuality.EXCELLENT && bandwidth >= 20_000L -> ImageQuality.MEDIUM
+                    else -> ImageQuality.LOW
+                }
+            }
         }
     }
 
@@ -120,21 +180,31 @@ class SuggestionsEngine {
         isMetered: Boolean,
         quality: NetworkQuality
     ): VideoQuality {
-        return when {
-            // Very poor conditions = audio only
-            quality == NetworkQuality.POOR || bandwidth < 500L -> VideoQuality.AUDIO_ONLY
-
-            // Metered with low bandwidth = SD
-            isMetered && bandwidth < 3_000L -> VideoQuality.SD_480P
-
-            // Good unmetered connection = HD
-            !isMetered && bandwidth >= 8_000L && quality == NetworkQuality.EXCELLENT -> VideoQuality.HD_1080P
-
-            // Decent unmetered = 720p
-            !isMetered && bandwidth >= 5_000L -> VideoQuality.HD_720P
-
-            // Default to SD
-            else -> VideoQuality.SD_480P
+        return when (config.userMode) {
+            UserMode.UNRESTRICTED -> {
+                when {
+                    bandwidth >= 8_000L -> VideoQuality.HD_1080P
+                    bandwidth >= 5_000L -> VideoQuality.HD_720P
+                    bandwidth >= 2_000L -> VideoQuality.SD_480P
+                    else -> VideoQuality.AUDIO_ONLY
+                }
+            }
+            UserMode.BALANCED -> {
+                when {
+                    quality == NetworkQuality.POOR || bandwidth < 500L -> VideoQuality.AUDIO_ONLY
+                    isMetered && bandwidth < 3_000L -> VideoQuality.SD_480P
+                    !isMetered && bandwidth >= 8_000L && quality == NetworkQuality.EXCELLENT -> VideoQuality.HD_1080P
+                    !isMetered && bandwidth >= 5_000L -> VideoQuality.HD_720P
+                    else -> VideoQuality.SD_480P
+                }
+            }
+            UserMode.CONSERVATIVE -> {
+                when {
+                    bandwidth < 1_000L -> VideoQuality.AUDIO_ONLY
+                    !isMetered && bandwidth >= 10_000L -> VideoQuality.SD_480P
+                    else -> VideoQuality.AUDIO_ONLY
+                }
+            }
         }
     }
 
@@ -150,7 +220,6 @@ class SuggestionsEngine {
                 NetworkQuality.POOR -> BatteryImpact.SEVERE
                 else -> BatteryImpact.MODERATE
             }
-
             NetworkType.ETHERNET -> BatteryImpact.MINIMAL
             else -> BatteryImpact.MINIMAL
         }
@@ -160,7 +229,8 @@ class SuggestionsEngine {
         return when {
             !isMetered -> DataCostImpact.FREE
             networkType == NetworkType.WIFI -> DataCostImpact.FREE
-            else -> DataCostImpact.MODERATE // Assume moderate cost for cellular
+            config.ignoreMeteredRestrictions -> DataCostImpact.FREE // Treat as unlimited
+            else -> DataCostImpact.MODERATE
         }
     }
 
@@ -169,29 +239,46 @@ class SuggestionsEngine {
         bandwidth: Long,
         quality: NetworkQuality
     ): Long {
-        return when {
-            // Poor quality = small files only
-            quality == NetworkQuality.POOR -> 1_000_000L // 1 MB
-
-            // Metered connections = be conservative
-            isMetered -> when {
-                bandwidth >= 10_000L -> 10_000_000L // 10 MB
-                bandwidth >= 5_000L -> 5_000_000L   // 5 MB
-                else -> 2_000_000L                  // 2 MB
+        return when (config.userMode) {
+            UserMode.UNRESTRICTED -> {
+                when {
+                    bandwidth >= 20_000L -> 500_000_000L // 500 MB
+                    bandwidth >= 10_000L -> 200_000_000L // 200 MB
+                    bandwidth >= 5_000L -> 100_000_000L  // 100 MB
+                    else -> 50_000_000L                  // 50 MB
+                }
             }
-
-            // Unmetered = larger files OK
-            else -> when {
-                bandwidth >= 20_000L -> 100_000_000L // 100 MB
-                bandwidth >= 10_000L -> 50_000_000L  // 50 MB
-                else -> 20_000_000L                  // 20 MB
+            UserMode.BALANCED -> {
+                when {
+                    quality == NetworkQuality.POOR -> 1_000_000L // 1 MB
+                    isMetered -> when {
+                        bandwidth >= 10_000L -> 10_000_000L // 10 MB
+                        bandwidth >= 5_000L -> 5_000_000L   // 5 MB
+                        else -> 2_000_000L                  // 2 MB
+                    }
+                    else -> when {
+                        bandwidth >= 20_000L -> 100_000_000L // 100 MB
+                        bandwidth >= 10_000L -> 50_000_000L  // 50 MB
+                        else -> 20_000_000L                  // 20 MB
+                    }
+                }
+            }
+            UserMode.CONSERVATIVE -> {
+                when {
+                    isMetered -> 500_000L // 500 KB
+                    bandwidth >= 20_000L && quality == NetworkQuality.EXCELLENT -> 10_000_000L // 10 MB
+                    else -> 2_000_000L // 2 MB
+                }
             }
         }
     }
 
     private fun shouldBatchOperations(isMetered: Boolean, quality: NetworkQuality): Boolean {
-        // Batch operations on poor networks or metered connections to be efficient
-        return isMetered || quality == NetworkQuality.POOR
+        return when (config.userMode) {
+            UserMode.UNRESTRICTED -> false // Don't batch, send immediately
+            UserMode.BALANCED -> isMetered || quality == NetworkQuality.POOR
+            UserMode.CONSERVATIVE -> true // Always batch to minimize network usage
+        }
     }
 
     fun getOfflineSuggestions(): NetworkSuggestions {
@@ -202,11 +289,10 @@ class SuggestionsEngine {
             shouldDeferLargeUploads = true,
             suggestedImageQuality = ImageQuality.LOW,
             suggestedVideoQuality = VideoQuality.AUDIO_ONLY,
-            batteryImpact = BatteryImpact.LOW, // No actual network usage
-            dataCostImpact = DataCostImpact.FREE, // No data being used
-            maxSuggestedFileSize = 0L, // No files should be transferred
+            batteryImpact = BatteryImpact.LOW,
+            dataCostImpact = DataCostImpact.FREE,
+            maxSuggestedFileSize = 0L,
             batchOperations = true
         )
     }
-
 }
